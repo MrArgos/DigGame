@@ -124,7 +124,9 @@ function Start() {
     //generateCubes(0);
     generateCubes(cubes, rowSize, heigthSize);
     cena.add(cubes);
-
+    for (let i = 0; i < cubes.children.length; i++) {
+        console.log(cubes.children[i].name);
+    }
     requestAnimationFrame(update);
 }
 
@@ -211,6 +213,7 @@ function generateCubes(parentObject, width, heigth) {
             newCube.receiveShadow = true;
             newCube.position.x = j;
             newCube.position.y = i;
+            newCube.name = j + ',' + i;
             parentObject.add(newCube);
         }
         
