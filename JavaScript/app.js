@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', Start);
 
 var cena = new THREE.Scene();
 var camara = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-var renderer = new THREE.WebGLRenderer({ alpha: true});
+var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true});
 renderer.setSize(window.innerWidth - 15, window.innerHeight - 15);
 renderer.setClearColor( 0xffffff, 1);
 document.body.appendChild(renderer.domElement);
@@ -19,9 +19,9 @@ var relogio = new THREE.Clock();
 var importer = new THREE.FBXLoader();
 var luzObjeto;
 var rowSize = 8;
-var depthSize = 8;
-var maxCubes = 21;
-var cubos = new THREE.Object3D();
+var heigthSize = 8;
+var cubes = new THREE.Object3D();
+var playerPosition = {x:0, y:-0.5};
 
 importer.load('./Objetos/Samba Dancing.fbx', function (object) {
 
@@ -43,71 +43,87 @@ importer.load('./Objetos/Samba Dancing.fbx', function (object) {
     object.scale.y = 0.005;
 
     object.position.z = 0.5;
-    object.position.y = -0.5;
+    //object.position.y = -0.5;
 
     objetoImportado = object;
+    objetoImportado.castShadow = true;
+    //objetoImportado.add(camara);
 });
 
 document.addEventListener('mousemove', ev =>{
     var x = (ev.clientX - 0) / (window.innerWidth - 0) * (1 - (-1)) + -1;
     var y = (ev.clientY - 0) / (window.innerHeight -0) * (1 - (-1)) + -1;
 
-    camaraCoord = {x:x, y:y};
+    //camaraCoord = {x:x, y:y};
     cuboCoordRotation = {x:x, y:y};
 });
 
 document.addEventListener('keydown', ev =>{
     
-    // Desafio 1 - translate do objetoImportado quando for premida uma tecla
     if (ev.keyCode == 87)
     {
-        objetoImportado.translateY(1);
-        camara.translateY(1);
+        playerPosition.y++;
+        camaraCoord.y++;
+        //camara.position.y++;
     }
     if (ev.keyCode == 83)
-    {    objetoImportado.translateY(-1);
-        camara.translateY(-1);
+    {    
+        playerPosition.y--;
+        camaraCoord.y--;
+        // objetoImportado.translateY(-1);
+        //camara.position.y--;
+        // camara.position.lerp(new THREE.Vector3(camara.position.x, (camara.position.y - 1), camara.position.z), 0.1); 
     }
 
     if (ev.keyCode == 65)
     {
-    objetoImportado.translateX(-1);
-    camara.translateX(-1);
+        playerPosition.x--;
+        camaraCoord.x--;
+        // objetoImportado.translateX(-1);
+        //camara.position.x--;
     }
 
     if (ev.keyCode == 68)
     { 
-        objetoImportado.translateX(1);
-        camara.translateX(1);
+        playerPosition.x++;
+        camaraCoord.x++;
+        // objetoImportado.translateX(1);
+        //camara.position.x++;
     }
 
     if (ev.keyCode == 32)
         criarNovoCubo();
 
+    console.log(playerPosition);
+    console.log(camara.position);
+    //console.log(luzObjeto);
 });
 
 function Start() {
     cena.add(cubo);
-    //camara.position.y = 0.5;
+    camara.position.y = 0.2;
+    camara.rotation.x = -0.1;
     camara.position.z = 2;
+    camaraCoord = {x:camara.rotation.x, y:camara.position.y};
 
 
     // SpotLight
-    var light = new THREE.SpotLight('#ffffff', 1);
-    light.position.x = 5;
-    light.position.y = 4;
-    light.position.z = 10;
-    //light.lookAt(cubo.position);
-    //cena.add(light);
-    luzObjeto = light;
+    luzObjeto = new THREE.SpotLight('#ffffff', 1);
+    luzObjeto.position.x = 0;
+    luzObjeto.position.y = 0;
+    luzObjeto.position.z = 1.5;
+    //luzObjeto = light;
+    cena.add(luzObjeto);
+    cena.add(luzObjeto.target);
 
     // AmbientLight
     var ambLigth = new THREE.AmbientLight(0xffffff, 0.5);
     cena.add(ambLigth);
 
     // Gerar cubos (chao)
-    generateCubes(0);
-    cena.add(cubos);
+    //generateCubes(0);
+    generateCubes(cubes, rowSize, heigthSize);
+    cena.add(cubes);
 
     requestAnimationFrame(update);
 }
@@ -119,10 +135,11 @@ function update() {
         cubo.rotation.y += cuboCoordRotation.x * 0.1;
     }
 
-    if (camaraCoord != null) {
-        camara.position.x += camaraCoord.x * 0.1;
-        camara.position.y -= camaraCoord.y * 0.1;
-    }
+    // Rodar a camara com o rato ( para testar)
+    // if (camaraCoord != null) {
+    //     camara.position.x += camaraCoord.x * 0.1;
+    //     camara.position.y -= camaraCoord.y * 0.1;
+    // }
 
     if (mixerAnimacao) {
         mixerAnimacao.update(relogio.getDelta());
@@ -131,9 +148,20 @@ function update() {
     // Desafio 3 - apontar luz para objeto
     if(objetoImportado != null)
     {
-        objetoImportado.add(luzObjeto);
-        //luzObjeto.lookAt(objetoImportado.position);
+        // objetoImportado.position.x = playerPosition.x;
+        // objetoImportado.position.y = playerPosition.y;
+
+        objetoImportado.position.lerp(new THREE.Vector3(playerPosition.x, playerPosition.y, objetoImportado.position.z), 0.04);
+        luzObjeto.target.position.lerp(new THREE.Vector3(playerPosition.x, playerPosition.y, objetoImportado.position.z), 0.04);
+        camara.position.lerp(new THREE.Vector3(camaraCoord.x, camaraCoord.y, camara.position.z), 0.06);
+        //luzObjeto.target = objetoImportado;
     }
+
+    luzObjeto.position.x = playerPosition.x;
+    luzObjeto.position.y = playerPosition.y;
+    // luzObjeto.target.position.x = playerPosition.x;
+    // luzObjeto.target.position.y = playerPosition.y;
+    //console.log(luzObjeto);
 
     renderer.render(cena, camara);
     requestAnimationFrame(update);
@@ -150,22 +178,41 @@ function criarNovoCubo() {
     cena.add(novoCubo);
 }
 
-function generateCubes(i) {
-    var cor = new THREE.Color(0xffffff);
-    cor.setHex(Math.random() * 0xffffff);
-    var mat = new THREE.MeshStandardMaterial({color: cor});
-    var novoCubo = new THREE.Mesh(geometria, mat);
-    novoCubo.position.x = (i % rowSize) - (rowSize / 2);
-    var rem = i;
-    var yPos = 0;
-    do {
-        rem = rem - rowSize;
-        yPos++;
-    } while (rem >= 0)
-    novoCubo.position.y = - yPos;
-    cubos.add(novoCubo);
-    if ( i < (rowSize * depthSize) - 1)
-    {
-        generateCubes(++i);
-    }  
+// function generateCubes(i) {
+//     var cor = new THREE.Color(0xffffff);
+//     cor.setHex(Math.random() * 0xffffff);
+//     var mat = new THREE.MeshStandardMaterial({color: cor});
+//     var novoCubo = new THREE.Mesh(geometria, mat);
+//     novoCubo.position.x = (i % rowSize) - (rowSize / 2);
+//     var rem = i;
+//     var yPos = 0;
+//     do {
+//         rem = rem - rowSize;
+//         yPos++;
+//     } while (rem >= 0)
+//     novoCubo.position.y = - yPos;
+//     cubos.add(novoCubo);
+//     if ( i < (rowSize * depthSize) - 1)
+//     {
+//         generateCubes(++i);
+//     }  
+// }
+
+function generateCubes(parentObject, width, heigth) {
+    var newColor = new THREE.Color(0xffffff);
+    var newMat;
+    var newCube;
+
+    for (let i = -1; i >= (-heigth); i--) {
+        for (let j = 0; j < width; j++) {
+            newColor.setHex(Math.random() * 0xffffff);
+            newMat = new THREE.MeshPhongMaterial({color: newColor});
+            newCube = new THREE.Mesh(geometria, newMat);
+            newCube.receiveShadow = true;
+            newCube.position.x = j;
+            newCube.position.y = i;
+            parentObject.add(newCube);
+        }
+        
+    }
 }
