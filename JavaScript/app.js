@@ -147,7 +147,6 @@ function update() {
         mixerAnimacao.update(relogio.getDelta());
     }
 
-    // Desafio 3 - apontar luz para objeto
     if(objetoImportado != null)
     {
         // objetoImportado.position.x = playerPosition.x;
