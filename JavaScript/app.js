@@ -4,10 +4,10 @@ var cena = new THREE.Scene();
 var camara = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
 var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true});
 renderer.setSize(window.innerWidth - 15, window.innerHeight - 15);
-renderer.setClearColor( 0xffffff, 1);
+renderer.setClearColor(  0x707b7c , 1);
 document.body.appendChild(renderer.domElement);
 var geometria = new THREE.BoxGeometry(1,1,1);
-var material = new THREE.MeshStandardMaterial({color : 0xff0000});
+var material = new THREE.MeshPhongMaterial({color : 0xff0000});
 var cubo = new THREE.Mesh(geometria, material);
 var cuboCoordRotation;
 var camaraCoord;
@@ -21,7 +21,13 @@ var luzObjeto;
 var rowSize = 8;
 var heigthSize = 8;
 var cubes = new THREE.Object3D();
-var playerPosition = {x:0, y:-0.5};
+var playerPosition = {x:0, y:0.05};
+var robotBody = new THREE.Object3D();
+
+var textureLoader = new THREE.TextureLoader();
+var metalTexture = textureLoader.load("Textures/Metal022_1K_Color.png");
+var dirt1Texture = textureLoader.load("Textures/TextureGround2.jpg");
+var dirt1BumpMap = textureLoader.load("Textures/TextureGround2Normal.jpg");
 
 importer.load('./Objetos/Samba Dancing.fbx', function (object) {
 
@@ -36,7 +42,7 @@ importer.load('./Objetos/Samba Dancing.fbx', function (object) {
         }
     });
 
-    cena.add(object);
+    //cena.add(object);
 
     object.scale.x = 0.005;
     object.scale.z = 0.005;
@@ -100,7 +106,7 @@ document.addEventListener('keydown', ev =>{
 });
 
 function Start() {
-    cena.add(cubo);
+    //cena.add(cubo);
     camara.position.y = 0.2;
     camara.rotation.x = -0.1;
     camara.position.z = 2;
@@ -127,6 +133,71 @@ function Start() {
     for (let i = 0; i < cubes.children.length; i++) {
         console.log(cubes.children[i].name);
     }
+
+    // Robot ----------------------
+    // main body
+    var robotMainMat = new THREE.MeshPhongMaterial({color : 0xff0000});
+    //var robotMainMat = new THREE.MeshPhongMaterial({map : metalTexture});
+    var robotMainGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.2, 8);
+    var robotMain = new THREE.Mesh(robotMainGeometry, robotMainMat);
+    robotMain.rotation.set(Math.PI / 2, Math.PI /8, 0);
+    robotBody.add(robotMain);
+    
+    // legs
+    var robotLegsMat = new THREE.MeshPhongMaterial({color : 0x00FF00});
+    var robotLegsGeo = new THREE.BoxGeometry(0.2, 0.3, 0.1);
+    var robotLegLeft = new THREE.Mesh(robotLegsGeo, robotLegsMat);
+    var robotLegRight = new THREE.Mesh(robotLegsGeo, robotLegsMat);
+    robotLegLeft.position.set(-0.35, -0.4, 0);
+    robotLegLeft.rotation.set(0, 0, -Math.PI / 4);
+    robotLegRight.position.set(0.35, -0.4, 0);
+    robotLegRight.rotation.set(0, 0, Math.PI / 4);
+    robotBody.add(robotLegLeft);
+    robotBody.add(robotLegRight);
+
+    // feet
+    var feetShape = new THREE.Shape();
+    feetShape.moveTo(0.1,0);
+    feetShape.lineTo(0.5,0);
+    feetShape.quadraticCurveTo(0.65,0.05,0.5,0.2);
+    feetShape.lineTo(0.2,0.5);
+    feetShape.quadraticCurveTo(0.05,0.65,0,0.5);
+    feetShape.lineTo(0,0.1);
+    feetShape.quadraticCurveTo(0,0,0.1,0);
+    var extrudeSettings = {
+        steps:   1, 
+        depth:  0.1,      
+        bevelEnabled: true,   
+        bevelThickness: 0.01,  
+        bevelSize: 0.1,  
+        bevelSegments: 8
+    };
+    //var robotFeetGeo = new THREE.ShapeGeometry(feetShape);
+    var robotFeetGeo = new THREE.ExtrudeGeometry(feetShape, extrudeSettings);
+    var robotFeetMat = new THREE.MeshPhongMaterial({color : 0x292929});
+    //var robotFeetGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 3);
+    var robotFootLeft = new THREE.Mesh(robotFeetGeo, robotFeetMat);
+    var robotFootRight = new THREE.Mesh(robotFeetGeo, robotFeetMat);
+    robotFootLeft.position.set(-0.58, -0.6, 0.1);
+    robotFootRight.rotation.set(0, 0, Math.PI / 2);
+    robotFootRight.position.set(0.58, -0.6, 0.1);
+    robotFootLeft.scale.set(0.6,0.6,0.6);
+    robotFootRight.scale.set(0.6,0.6,0.6);
+    robotBody.add(robotFootLeft);
+    robotBody.add(robotFootRight);
+    
+    // laser
+    var robotLaserGeo = new THREE.ConeGeometry(0.1, 0.25, 20);
+    var robotLaserMat = new THREE.MeshPhongMaterial({color : 0x0000ff});
+    var robotLaser = new THREE.Mesh(robotLaserGeo, robotLaserMat);
+    robotLaser.position.set(-0.55,0,0);
+    robotLaser.rotation.set(0,0, Math.PI / 2);
+    robotBody.add(robotLaser);
+    
+    
+    robotBody.scale.set(0.8,0.8,0.8);
+    cena.add(robotBody);
+
     requestAnimationFrame(update);
 }
 
@@ -147,13 +218,13 @@ function update() {
         mixerAnimacao.update(relogio.getDelta());
     }
 
-    if(objetoImportado != null)
+    if(robotBody != null)
     {
         // objetoImportado.position.x = playerPosition.x;
         // objetoImportado.position.y = playerPosition.y;
 
-        objetoImportado.position.lerp(new THREE.Vector3(playerPosition.x, playerPosition.y, objetoImportado.position.z), 0.04);
-        luzObjeto.target.position.lerp(new THREE.Vector3(playerPosition.x, playerPosition.y, objetoImportado.position.z), 0.04);
+        robotBody.position.lerp(new THREE.Vector3(playerPosition.x, playerPosition.y, robotBody.position.z), 0.04);
+        luzObjeto.target.position.lerp(new THREE.Vector3(playerPosition.x, playerPosition.y, robotBody.position.z), 0.04);
         camara.position.lerp(new THREE.Vector3(camaraCoord.x, camaraCoord.y, camara.position.z), 0.06);
         //luzObjeto.target = objetoImportado;
     }
@@ -206,8 +277,9 @@ function generateCubes(parentObject, width, heigth) {
 
     for (let i = -1; i >= (-heigth); i--) {
         for (let j = 0; j < width; j++) {
-            newColor.setHex(Math.random() * 0xffffff);
-            newMat = new THREE.MeshPhongMaterial({color: newColor});
+            // newColor.setHex(Math.random() * 0xffffff);
+            // newMat = new THREE.MeshPhongMaterial({color: newColor});
+            newMat = new THREE.MeshPhongMaterial({map: dirt1Texture, normalMap: dirt1BumpMap});
             newCube = new THREE.Mesh(geometria, newMat);
             newCube.receiveShadow = true;
             newCube.position.x = j;
