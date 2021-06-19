@@ -14,8 +14,9 @@ var clock = new THREE.Clock();
 
 var camaraCoord;
 var activaCamaraPerspetiva = true;
-var dirLight;
+var directionalLight;
 var followSpotLight;
+var ambientLight;
 var cubes = new THREE.Object3D();
 var robotBody = new THREE.Object3D();
 var laserPosition;
@@ -61,9 +62,18 @@ document.addEventListener('keydown', ev =>{
     }
 
     if (ev.keyCode == 76) // L
-    {   // Trocar entre DirectionaLight e SpotLight
-        dirLight.visible = !dirLight.visible;
+    {   // Ligar/Desligar SpotLight
         followSpotLight.visible = !followSpotLight.visible;
+    }
+
+    if (ev.keyCode == 75) // K
+    {   // Ligar/Desligar DirectionaLight 
+        directionalLight.visible = !directionalLight.visible;
+    }
+
+    if (ev.keyCode == 74) // J
+    {   // Ligar/Desligar AmientLight
+        ambientLight.visible = !ambientLight.visible;
     }
 
     if (ev.keyCode == 32) // Espaço
@@ -117,11 +127,17 @@ function Start() {
     cena.add(followSpotLight.target);
 
     // Directional Light
-    dirLight = new THREE.DirectionalLight(0x969696, 1);
-    dirLight.castShadow = true;
-    dirLight.position.set(0,2,3);
-    cena.add(dirLight);
-    dirLight.visible = false;
+    directionalLight = new THREE.DirectionalLight(0x969696, 1);
+    directionalLight.castShadow = true;
+    directionalLight.position.set(0,2,3);
+    cena.add(directionalLight);
+    directionalLight.visible = false;
+
+    // Ambient Light
+    ambientLight = new THREE.AmbientLight(0xFFFFFF, 1);
+    cena.add(ambientLight);
+    ambientLight.visible = false;
+
 
     // Gerar cubos (chao)
     generateCubes();
