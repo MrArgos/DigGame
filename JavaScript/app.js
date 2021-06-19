@@ -22,7 +22,7 @@ var robotBody = new THREE.Object3D();
 var laserPosition;
 var laserDir = -1;
 var rowSize = 16;
-var heigthSize = 8;
+var heigthSize = 50;
 var initialPos = {x:(rowSize/2), y:0};
 var playerPosition = {x:initialPos.x, y:initialPos.y};
 var score = 0;
@@ -46,6 +46,11 @@ var laserNormal = textureLoader.load("./Textures/Robot/Sci-fi_Wall_009_normal.jp
 
 document.addEventListener('keydown', ev =>{
     
+    // if (ev.keyCode == 87) {
+    //     playerPosition.y++;
+    //     camaraCoord.y++;
+    // }
+
     if (ev.keyCode == 65) // A
     {
         moveLeft();
@@ -159,6 +164,8 @@ function update() {
         followSpotLight.position.lerp(new THREE.Vector3(playerPosition.x, playerPosition.y, followSpotLight.position.z), 0.03);
         // atualizar a posiçao da camera
         camaraPerspetiva.position.lerp(new THREE.Vector3(camaraCoord.x, camaraCoord.y, camaraPerspetiva.position.z), 0.015);
+        camaraOrtografica.position.lerp(new THREE.Vector3(
+            camaraOrtografica.position.x, camaraCoord.y, camaraOrtografica.position.z), 0.1);
 
         // atualizar a posição do laser
         var laser = robotBody.getObjectByName("laser");
