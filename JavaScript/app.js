@@ -32,17 +32,16 @@ var menuOpen = false;
 
 // carregar texturas
 var textureLoader = new THREE.TextureLoader();
-var dirtTexture = textureLoader.load("Textures/Ground/TextureGround2.jpg");
-var dirtNormal = textureLoader.load("Textures/Ground/TextureGround2Normal.jpg");
-var ironTexture = textureLoader.load("Textures/Ground/Rock_Ore_001_COLOR.jpg");
-var ironNormal = textureLoader.load("Textures/Ground/Rock_Ore_001_NORM.jpg");
-var robot1Texture = textureLoader.load("Textures/Robot/Metal_Rusted_008_basecolor.jpg");
-var robot1Normal = textureLoader.load("Textures/Robot/Metal_Rusted_008_normal.jpg");
-var robot2Texture = textureLoader.load("Textures/Robot/Greeble_Techno_002_basecolor.jpg");
-var robot2Normal = textureLoader.load("Textures/Robot/Greeble_Techno_002_normal.jpg");
-var laserTexture = textureLoader.load("Textures/Robot/Sci-fi_Wall_009_basecolor.jpg");
-var laserNormal = textureLoader.load("Textures/Robot/Sci-fi_Wall_009_normal.jpg");
-
+var dirtTexture = textureLoader.load("./Textures/Ground/TextureGround2.jpg");
+var dirtNormal = textureLoader.load("./Textures/Ground/TextureGround2Normal.jpg");
+var ironTexture = textureLoader.load("./Textures/Ground/Rock_Ore_001_COLOR.jpg");
+var ironNormal = textureLoader.load("./Textures/Ground/Rock_Ore_001_NORM.jpg");
+var robot1Texture = textureLoader.load("./Textures/Robot/Metal_Rusted_008_basecolor.jpg");
+var robot1Normal = textureLoader.load("./Textures/Robot/Metal_Rusted_008_normal.jpg");
+var robot2Texture = textureLoader.load("./Textures/Robot/Greeble_Techno_002_basecolor.jpg");
+var robot2Normal = textureLoader.load("./Textures/Robot/Greeble_Techno_002_normal.jpg");
+var laserTexture = textureLoader.load("./Textures/Robot/Sci-fi_Wall_009_basecolor.jpg");
+var laserNormal = textureLoader.load("./Textures/Robot/Sci-fi_Wall_009_normal.jpg");
 
 document.addEventListener('keydown', ev =>{
     
@@ -175,8 +174,6 @@ function update() {
             clock.stop();
         }
     }
-
-    console.log();
     
     requestAnimationFrame(update);
 }
@@ -192,7 +189,6 @@ function generateCubes() {
                 newMat = new THREE.MeshPhongMaterial({ color: 0x000000});
                 newCube = new THREE.Mesh(geometria, newMat);
                 newCube.matDefinido = "Indestrutivel";
-                console.log(i,j);
                 if(j != -1) {
                     j = rowSize;
                 }
@@ -201,7 +197,6 @@ function generateCubes() {
                 newMat = new THREE.MeshPhongMaterial({ color: 0x000000});
                 newCube = new THREE.Mesh(geometria, newMat);
                 newCube.matDefinido = "Indestrutivel";
-                console.log(i,j);
             }
             else if (prob > 0.3) {  // 70% probabilidade de ser terra
                 newMat = new THREE.MeshPhongMaterial({
