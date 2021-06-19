@@ -1,10 +1,11 @@
 document.addEventListener('DOMContentLoaded', Start);
 
 var cena = new THREE.Scene();
-var camara = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+var camaraPerspetiva;
+var camaraOrtografica;
 var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true});
 renderer.setSize(window.innerWidth - 15, window.innerHeight - 15);
-renderer.setClearColor(  0x707b7c , 1);
+renderer.setClearColor( 0x202020 , 1);
 document.body.appendChild(renderer.domElement);
 var geometria = new THREE.BoxGeometry(1,1,1);
 var material = new THREE.MeshPhongMaterial({color : 0xff0000});
@@ -12,20 +13,26 @@ var cubo = new THREE.Mesh(geometria, material);
 var cuboCoordRotation;
 var camaraCoord;
 var velocidadeAndar = 0.05;
+var activaCamaraPerspetiva = true;
+var dirLight;
+
 
 var objetoImportado;
 var mixerAnimacao;
 var relogio = new THREE.Clock();
 var importer = new THREE.FBXLoader();
-var luzObjeto;
-var rowSize = 8;
+var followSpotLight;
+var rowSize = 16;
 var heigthSize = 8;
 var cubes = new THREE.Object3D();
-var playerPosition = {x:0, y:0.05};
 var robotBody = new THREE.Object3D();
+var initialPos = {x:(rowSize/2), y:0};
+var playerPosition = {x:initialPos.x, y:initialPos.y};
+var laserDir = -1;
+var laserPosition;
+var score = 0;
 
 var textureLoader = new THREE.TextureLoader();
-var metalTexture = textureLoader.load("Textures/Metal022_1K_Color.png");
 var dirt1Texture = textureLoader.load("Textures/TextureGround2.jpg");
 var dirt1BumpMap = textureLoader.load("Textures/TextureGround2Normal.jpg");
 
@@ -66,80 +73,187 @@ document.addEventListener('mousemove', ev =>{
 
 document.addEventListener('keydown', ev =>{
     
-    if (ev.keyCode == 87)
-    {
-        playerPosition.y++;
-        camaraCoord.y++;
-        //camara.position.y++;
-    }
-    if (ev.keyCode == 83)
+    // if (ev.keyCode == 87) // W
+    // {
+    //     playerPosition.y++;
+    //     camaraCoord.y++;
+    // }
+    if (ev.keyCode == 83) // S
     {    
-        playerPosition.y--;
-        camaraCoord.y--;
-        // objetoImportado.translateY(-1);
-        //camara.position.y--;
-        // camara.position.lerp(new THREE.Vector3(camara.position.x, (camara.position.y - 1), camara.position.z), 0.1); 
+        moveDown();
     }
 
-    if (ev.keyCode == 65)
+    if (ev.keyCode == 65) // A
     {
-        playerPosition.x--;
-        camaraCoord.x--;
-        // objetoImportado.translateX(-1);
-        //camara.position.x--;
+        moveLeft();
     }
 
-    if (ev.keyCode == 68)
+    if (ev.keyCode == 68) // D
     { 
-        playerPosition.x++;
-        camaraCoord.x++;
-        // objetoImportado.translateX(1);
-        //camara.position.x++;
+        moveRight();
     }
 
-    if (ev.keyCode == 32)
-        criarNovoCubo();
+    if (ev.keyCode == 67) // C
+    { 
+        activaCamaraPerspetiva = !activaCamaraPerspetiva;
+    }
 
-    console.log(playerPosition);
-    console.log(camara.position);
-    //console.log(luzObjeto);
+    if (ev.keyCode == 76) // L
+    {
+        dirLight.visible = !dirLight.visible;
+        followSpotLight.visible = !followSpotLight.visible;
+    }
+
+    if (ev.keyCode == 32) // Espaço
+    {
+        destroyBlock();
+    } 
+
+    if (ev.keyCode == 37) // left arrow
+    {
+        moveLaserLeft();
+    } 
+
+    if (ev.keyCode == 39) // right arrow
+    {
+        moveLaserRight();
+    } 
+
 });
 
 function Start() {
-    //cena.add(cubo);
-    camara.position.y = 0.2;
-    camara.rotation.x = -0.1;
-    camara.position.z = 2;
-    camaraCoord = {x:camara.rotation.x, y:camara.position.y};
+    var mult = 80;
+    camaraPerspetiva = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camaraOrtografica = new THREE.OrthographicCamera( window.innerWidth / (- 2 * mult), window.innerWidth / (2* mult), 
+        window.innerHeight / (2 * mult), window.innerHeight / (- 2 * mult), 1, 5 );
+    
+    camaraPerspetiva.position.x = initialPos.x;
+    camaraPerspetiva.position.y = initialPos.y;
+    camaraPerspetiva.rotation.x = -0.1;
+    camaraPerspetiva.position.z = 2;
+    camaraCoord = {x:camaraPerspetiva.position.x, y:camaraPerspetiva.position.y};
 
+    camaraOrtografica.position.y = -heigthSize / 2;
+    camaraOrtografica.position.x = rowSize / 2 - 0.5;
+    camaraOrtografica.position.z = 2;
 
-    // SpotLight
-    luzObjeto = new THREE.SpotLight('#ffffff', 1);
-    luzObjeto.position.x = 0;
-    luzObjeto.position.y = 0;
-    luzObjeto.position.z = 1.5;
-    //luzObjeto = light;
-    cena.add(luzObjeto);
-    cena.add(luzObjeto.target);
+    // SpotLight que segue o robot
+    followSpotLight = new THREE.SpotLight('#909040', 0.8);
+    followSpotLight.position.x = initialPos.x;
+    followSpotLight.position.y = initialPos.y;
+    followSpotLight.position.z = 1.5;
+    followSpotLight.target.position.x = initialPos.x;
+    followSpotLight.target.position.y = initialPos.y;
+    followSpotLight.castShadow = true;
+    cena.add(followSpotLight);
+    cena.add(followSpotLight.target);
 
-    // AmbientLight
-    var ambLigth = new THREE.AmbientLight(0xffffff, 0.5);
-    cena.add(ambLigth);
+    // Directional Light
+    dirLight = new THREE.DirectionalLight(0x909040, 0.8);
+    dirLight.castShadow = true;
+    dirLight.position.set(0,2,3);
+    cena.add(dirLight);
+    dirLight.visible = false;
 
     // Gerar cubos (chao)
-    //generateCubes(0);
-    generateCubes(cubes, rowSize, heigthSize);
+    generateCubes();
     cena.add(cubes);
     for (let i = 0; i < cubes.children.length; i++) {
-        console.log(cubes.children[i].name);
+        //console.log(cubes.children[i].name);
     }
 
-    // Robot ----------------------
+    buildRobot();
+    requestAnimationFrame(update);
+}
+
+function update() {
+    
+    if (cuboCoordRotation != null) {
+        cubo.rotation.x += cuboCoordRotation.y * 0.1;
+        cubo.rotation.y += cuboCoordRotation.x * 0.1;
+    }
+
+    if (mixerAnimacao) {
+        mixerAnimacao.update(relogio.getDelta());
+    }
+
+    if(robotBody != null)
+    {
+        robotBody.position.lerp(new THREE.Vector3(playerPosition.x, playerPosition.y, robotBody.position.z), 0.03);
+        followSpotLight.target.position.lerp(new THREE.Vector3(playerPosition.x, playerPosition.y, robotBody.position.z), 0.03);
+        followSpotLight.position.lerp(new THREE.Vector3(playerPosition.x, playerPosition.y, followSpotLight.position.z), 0.03);
+        camaraPerspetiva.position.lerp(new THREE.Vector3(camaraCoord.x, camaraCoord.y, camaraPerspetiva.position.z), 0.015);
+
+        var laser = robotBody.getObjectByName("laser");
+        if(laser != null && laserPosition != null) {
+            laser.position.lerp(new THREE.Vector3(laserPosition.x, laserPosition.y, laser.position.z), 0.1);
+        }
+    }
+
+    if (activaCamaraPerspetiva) {
+        renderer.render(cena, camaraPerspetiva);
+    }
+    else {
+        renderer.render(cena, camaraOrtografica);
+    }
+    
+    requestAnimationFrame(update);
+}
+
+
+function generateCubes() {
+    var newMat;
+    var newCube;
+    for (let i = 0; i >= (-heigthSize)-1; i--) {
+        for (let j = -1; j <= rowSize ; j++) {
+            var prob = Math.random();
+            if (i == 0) {
+                newMat = new THREE.MeshPhongMaterial({ color: 0x000000});
+                newCube = new THREE.Mesh(geometria, newMat);
+                newCube.matDefinido = "Indestrutivel";
+                console.log(i,j);
+                if(j != -1) {
+                    j = rowSize;
+                }
+            }
+            else if(i == (-heigthSize)-1 || j == -1 || j == rowSize){
+                newMat = new THREE.MeshPhongMaterial({ color: 0x000000});
+                newCube = new THREE.Mesh(geometria, newMat);
+                newCube.matDefinido = "Indestrutivel";
+                console.log(i,j);
+            }
+            else if (prob > 0.3) {
+                newMat = new THREE.MeshPhongMaterial({map: dirt1Texture, normalMap: dirt1BumpMap, shininess: 10});
+                newCube = new THREE.Mesh(geometria, newMat);
+                newCube.matDefinido = "Terra";
+            }
+            else if (prob > 0.1){
+                newMat = new THREE.MeshPhongMaterial({ color: 0xff0000});
+                newCube = new THREE.Mesh(geometria, newMat);
+                newCube.matDefinido = "Ferro";
+            }else{
+                newMat = new THREE.MeshPhongMaterial({ color: 0x000000});
+                newCube = new THREE.Mesh(geometria, newMat);
+                newCube.matDefinido = "Indestrutivel";
+            }
+            newCube.receiveShadow = true;
+            newCube.position.x = j;
+            newCube.position.y = i;
+            newCube.name = j + ',' + i;
+            cubes.add(newCube);
+        }   
+    }
+}
+
+function buildRobot() {
+    // Robot 
     // main body
     var robotMainMat = new THREE.MeshPhongMaterial({color : 0xff0000});
     //var robotMainMat = new THREE.MeshPhongMaterial({map : metalTexture});
     var robotMainGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.2, 8);
     var robotMain = new THREE.Mesh(robotMainGeometry, robotMainMat);
+    robotMain.castShadow = true;
+    robotMain.receiveShadow = true;
     robotMain.rotation.set(Math.PI / 2, Math.PI /8, 0);
     robotBody.add(robotMain);
     
@@ -152,6 +266,10 @@ function Start() {
     robotLegLeft.rotation.set(0, 0, -Math.PI / 4);
     robotLegRight.position.set(0.35, -0.4, 0);
     robotLegRight.rotation.set(0, 0, Math.PI / 4);
+    robotLegLeft.castShadow = true;
+    robotLegLeft.receiveShadow = true;
+    robotLegRight.castShadow = true;
+    robotLegRight.receiveShadow = true;
     robotBody.add(robotLegLeft);
     robotBody.add(robotLegRight);
 
@@ -183,6 +301,10 @@ function Start() {
     robotFootRight.position.set(0.58, -0.6, 0.1);
     robotFootLeft.scale.set(0.6,0.6,0.6);
     robotFootRight.scale.set(0.6,0.6,0.6);
+    robotFootLeft.castShadow = true;
+    robotFootLeft.receiveShadow = true;
+    robotFootRight.castShadow = true;
+    robotFootRight.receiveShadow = true;
     robotBody.add(robotFootLeft);
     robotBody.add(robotFootRight);
     
@@ -192,101 +314,106 @@ function Start() {
     var robotLaser = new THREE.Mesh(robotLaserGeo, robotLaserMat);
     robotLaser.position.set(-0.55,0,0);
     robotLaser.rotation.set(0,0, Math.PI / 2);
+    robotLaser.castShadow = true;
+    robotLaser.receiveShadow = true;
+    robotLaser.name = "laser";
     robotBody.add(robotLaser);
     
-    
+    //console.log("initialPos:{0}",initialPos);
     robotBody.scale.set(0.8,0.8,0.8);
+    robotBody.position.set(initialPos.x, 0, 0);
     cena.add(robotBody);
-
-    requestAnimationFrame(update);
 }
 
-function update() {
-    
-    if (cuboCoordRotation != null) {
-        cubo.rotation.x += cuboCoordRotation.y * 0.1;
-        cubo.rotation.y += cuboCoordRotation.x * 0.1;
+function moveLeft(){
+    var objName = (playerPosition.x - 1).toString() + "," + playerPosition.y.toString();
+    //console.log(objName);
+    var c = cubes.getObjectByName(objName);
+    //console.log(c);
+    if (c == null || c.visible == false) {
+        playerPosition.x--;
+        camaraCoord.x--;
     }
-
-    // Rodar a camara com o rato ( para testar)
-    // if (camaraCoord != null) {
-    //     camara.position.x += camaraCoord.x * 0.1;
-    //     camara.position.y -= camaraCoord.y * 0.1;
-    // }
-
-    if (mixerAnimacao) {
-        mixerAnimacao.update(relogio.getDelta());
-    }
-
-    if(robotBody != null)
-    {
-        // objetoImportado.position.x = playerPosition.x;
-        // objetoImportado.position.y = playerPosition.y;
-
-        robotBody.position.lerp(new THREE.Vector3(playerPosition.x, playerPosition.y, robotBody.position.z), 0.04);
-        luzObjeto.target.position.lerp(new THREE.Vector3(playerPosition.x, playerPosition.y, robotBody.position.z), 0.04);
-        camara.position.lerp(new THREE.Vector3(camaraCoord.x, camaraCoord.y, camara.position.z), 0.06);
-        //luzObjeto.target = objetoImportado;
-    }
-
-    luzObjeto.position.x = playerPosition.x;
-    luzObjeto.position.y = playerPosition.y;
-    // luzObjeto.target.position.x = playerPosition.x;
-    // luzObjeto.target.position.y = playerPosition.y;
-    //console.log(luzObjeto);
-
-    renderer.render(cena, camara);
-    requestAnimationFrame(update);
 }
 
-function criarNovoCubo() {
-    var novaCor = new THREE.Color(0xffffff);
-    novaCor.setHex(Math.random() * 0xffffff);
-    var novoMat = new THREE.MeshBasicMaterial({color : novaCor});
-    var novoCubo = new THREE.Mesh(geometria, novoMat);
-    novoCubo.translateX(THREE.Math.randFloat(-6,6));
-    novoCubo.translateY(THREE.Math.randFloat(-6,6));
-    novoCubo.translateZ(THREE.Math.randFloat(-10,3));
-    cena.add(novoCubo);
+function moveRight(){
+    var objName = (playerPosition.x + 1).toString() + "," + playerPosition.y.toString();
+    //console.log(objName);
+    var c = cubes.getObjectByName(objName);
+    //console.log(c);
+    if (c == null || c.visible == false) {
+        playerPosition.x++;
+        camaraCoord.x++;
+    }
 }
 
-// function generateCubes(i) {
-//     var cor = new THREE.Color(0xffffff);
-//     cor.setHex(Math.random() * 0xffffff);
-//     var mat = new THREE.MeshStandardMaterial({color: cor});
-//     var novoCubo = new THREE.Mesh(geometria, mat);
-//     novoCubo.position.x = (i % rowSize) - (rowSize / 2);
-//     var rem = i;
-//     var yPos = 0;
-//     do {
-//         rem = rem - rowSize;
-//         yPos++;
-//     } while (rem >= 0)
-//     novoCubo.position.y = - yPos;
-//     cubos.add(novoCubo);
-//     if ( i < (rowSize * depthSize) - 1)
-//     {
-//         generateCubes(++i);
-//     }  
-// }
+function moveDown(){
+    var objName = (playerPosition.x).toString() + "," + (playerPosition.y -1).toString();
+    //console.log(objName);
+    var c = cubes.getObjectByName(objName);
+    //console.log(c);
+    if (c == null || c.visible == false) {
+        playerPosition.y--;
+        camaraCoord.y--;
+    }
+}
 
-function generateCubes(parentObject, width, heigth) {
-    var newColor = new THREE.Color(0xffffff);
-    var newMat;
-    var newCube;
-
-    for (let i = -1; i >= (-heigth); i--) {
-        for (let j = 0; j < width; j++) {
-            // newColor.setHex(Math.random() * 0xffffff);
-            // newMat = new THREE.MeshPhongMaterial({color: newColor});
-            newMat = new THREE.MeshPhongMaterial({map: dirt1Texture, normalMap: dirt1BumpMap});
-            newCube = new THREE.Mesh(geometria, newMat);
-            newCube.receiveShadow = true;
-            newCube.position.x = j;
-            newCube.position.y = i;
-            newCube.name = j + ',' + i;
-            parentObject.add(newCube);
+function moveLaserLeft(){
+    if (laserDir != -1) {
+        laserDir--;
+        var laser = robotBody.getObjectByName("laser");
+        laserPosition = {x:laser.position.x, y:laser.position.y};
+        laserPosition.x -= 0.55;
+        laser.rotateZ(-Math.PI/2);
+        if (laserDir == 0) {
+            laserPosition.y -= 0.55;
+        }else {
+            laserPosition.y += 0.55;
         }
-        
     }
+}
+
+function moveLaserRight(){
+    if (laserDir != 1) {
+        laserDir++;
+        var laser = robotBody.getObjectByName("laser");
+        laserPosition = {x:laser.position.x, y:laser.position.y};
+        laserRotation = laser.rotation.z;
+        laserPosition.x += 0.55;
+        laser.rotateZ(Math.PI/2);
+        if (laserDir == 0) {
+            laserPosition.y -= 0.55;
+        }else {
+            laserPosition.y += 0.55;
+        }
+    }
+}
+
+function destroyBlock(){
+    var objName;
+    if (laserDir == 0) {
+        objName = (playerPosition.x).toString() + "," + (playerPosition.y -1).toString();
+    }
+    else {
+        objName = (playerPosition.x + laserDir).toString() + "," + (playerPosition.y).toString();
+    }
+
+    var c = cubes.getObjectByName(objName);
+        if (c != null && c.visible != false) {
+            switch (c.matDefinido) {
+                case 'Terra':
+                    score +=10;
+                    break;
+                case 'Ferro':
+                    score+=30;
+                    break;
+                case 'Indestrutivel':
+                    return;  
+            }
+            c.visible = false;
+            var text = document.getElementById("p").innerHTML = score;
+            if (laserDir == 0) {
+                moveDown();
+            }
+        }
 }
