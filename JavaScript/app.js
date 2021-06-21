@@ -1,19 +1,17 @@
 document.addEventListener('DOMContentLoaded', Start);
 
-var cena = new THREE.Scene();
-var camaraPerspetiva;
-var camaraOrtografica;
+var scene = new THREE.Scene();
+var perspectiveCamera;
+var ortographicCamera;
 var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true});
 renderer.setSize(window.innerWidth - 15, window.innerHeight - 15);
 renderer.setClearColor( 0x202020 , 1);
 document.body.appendChild(renderer.domElement);
-var geometria = new THREE.BoxGeometry(1,1,1);
-var material = new THREE.MeshPhongMaterial({color : 0xff0000});
-var cubo = new THREE.Mesh(geometria, material);
+var cubeGeo = new THREE.BoxGeometry(1,1,1);
 var clock = new THREE.Clock();
 
-var camaraCoord;
-var activaCamaraPerspetiva = true;
+var cameraCoord;
+var activePerspective = true;
 var directionalLight;
 var followSpotLight;
 var ambientLight;
@@ -63,7 +61,7 @@ document.addEventListener('keydown', ev =>{
 
     if (ev.keyCode == 67) // C
     {   // Trocar entre camara Perspetiva e Ortografica
-        activaCamaraPerspetiva = !activaCamaraPerspetiva;
+        activePerspective = !activePerspective;
     }
 
     if (ev.keyCode == 76) // L
@@ -106,19 +104,19 @@ document.addEventListener('keydown', ev =>{
 function Start() {
     var mult = 80;
     // Camara Perspetiva e Ortografica
-    camaraPerspetiva = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-    camaraOrtografica = new THREE.OrthographicCamera( window.innerWidth / (- 2 * mult), window.innerWidth / (2* mult), 
+    perspectiveCamera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    ortographicCamera = new THREE.OrthographicCamera( window.innerWidth / (- 2 * mult), window.innerWidth / (2* mult), 
         window.innerHeight / (2 * mult), window.innerHeight / (- 2 * mult), 1, 5 );
     
-    camaraPerspetiva.position.x = initialPos.x;
-    camaraPerspetiva.position.y = initialPos.y;
-    camaraPerspetiva.rotation.x = -0.1;
-    camaraPerspetiva.position.z = 2;
-    camaraCoord = {x:camaraPerspetiva.position.x, y:camaraPerspetiva.position.y};
+    perspectiveCamera.position.x = initialPos.x;
+    perspectiveCamera.position.y = initialPos.y;
+    perspectiveCamera.rotation.x = -0.1;
+    perspectiveCamera.position.z = 2;
+    cameraCoord = {x:perspectiveCamera.position.x, y:perspectiveCamera.position.y};
 
-    camaraOrtografica.position.y = -heigthSize / 2;
-    camaraOrtografica.position.x = rowSize / 2 - 0.5;
-    camaraOrtografica.position.z = 2;
+    ortographicCamera.position.y = -heigthSize / 2;
+    ortographicCamera.position.x = rowSize / 2 - 0.5;
+    ortographicCamera.position.z = 2;
 
     // SpotLight que segue o robot
     followSpotLight = new THREE.SpotLight(0x969696, 1);
@@ -128,25 +126,25 @@ function Start() {
     followSpotLight.target.position.x = initialPos.x;
     followSpotLight.target.position.y = initialPos.y;
     followSpotLight.castShadow = true;
-    cena.add(followSpotLight);
-    cena.add(followSpotLight.target);
+    scene.add(followSpotLight);
+    scene.add(followSpotLight.target);
 
     // Directional Light
     directionalLight = new THREE.DirectionalLight(0x969696, 1);
     directionalLight.castShadow = true;
     directionalLight.position.set(0,2,3);
-    cena.add(directionalLight);
+    scene.add(directionalLight);
     directionalLight.visible = false;
 
     // Ambient Light
     ambientLight = new THREE.AmbientLight(0xFFFFFF, 1);
-    cena.add(ambientLight);
+    scene.add(ambientLight);
     ambientLight.visible = false;
 
 
     // Gerar cubos (chao)
     generateCubes();
-    cena.add(cubes);
+    scene.add(cubes);
 
     // contruir o robot
     buildRobot();
@@ -163,9 +161,9 @@ function update() {
         followSpotLight.target.position.lerp(new THREE.Vector3(playerPosition.x, playerPosition.y, robotBody.position.z), 0.03);
         followSpotLight.position.lerp(new THREE.Vector3(playerPosition.x, playerPosition.y, followSpotLight.position.z), 0.03);
         // atualizar a posiçao da camera
-        camaraPerspetiva.position.lerp(new THREE.Vector3(camaraCoord.x, camaraCoord.y, camaraPerspetiva.position.z), 0.015);
-        camaraOrtografica.position.lerp(new THREE.Vector3(
-            camaraOrtografica.position.x, camaraCoord.y, camaraOrtografica.position.z), 0.1);
+        perspectiveCamera.position.lerp(new THREE.Vector3(cameraCoord.x, cameraCoord.y, perspectiveCamera.position.z), 0.015);
+        ortographicCamera.position.lerp(new THREE.Vector3(
+            ortographicCamera.position.x, cameraCoord.y, ortographicCamera.position.z), 0.1);
 
         // atualizar a posição do laser
         var laser = robotBody.getObjectByName("laser");
@@ -175,11 +173,11 @@ function update() {
     }
 
     // mudar de camara
-    if (activaCamaraPerspetiva) {
-        renderer.render(cena, camaraPerspetiva);
+    if (activePerspective) {
+        renderer.render(scene, perspectiveCamera);
     }
     else {
-        renderer.render(cena, camaraOrtografica);
+        renderer.render(scene, ortographicCamera);
     }
 
     // corre a animaçao do feixe de laser durante 1 segundo
@@ -210,7 +208,7 @@ function generateCubes() {
             var prob = Math.random();
             if (i == 0) { // gerar uma barreira indestrutivel à volta da área de jogo
                 newMat = new THREE.MeshPhongMaterial({ color: 0x000000});
-                newCube = new THREE.Mesh(geometria, newMat);
+                newCube = new THREE.Mesh(cubeGeo, newMat);
                 newCube.matDefinido = "Indestrutivel";
                 if(j != -1) {
                     j = rowSize;
@@ -218,7 +216,7 @@ function generateCubes() {
             }
             else if(i == (-heigthSize)-1 || j == -1 || j == rowSize){
                 newMat = new THREE.MeshPhongMaterial({ color: 0x000000});
-                newCube = new THREE.Mesh(geometria, newMat);
+                newCube = new THREE.Mesh(cubeGeo, newMat);
                 newCube.matDefinido = "Indestrutivel";
             }
             else if (prob > 0.3) {  // 70% probabilidade de ser terra
@@ -226,18 +224,18 @@ function generateCubes() {
                     map: dirtTexture, 
                     normalMap: dirtNormal, 
                     shininess: 10});
-                newCube = new THREE.Mesh(geometria, newMat);
+                newCube = new THREE.Mesh(cubeGeo, newMat);
                 newCube.matDefinido = "Dirt";
             }
             else if (prob > 0.1){   // 20% probabilidade de ser ferro
                 newMat = new THREE.MeshPhongMaterial({ 
                     map: ironTexture, 
                     normalMap: ironNormal});
-                newCube = new THREE.Mesh(geometria, newMat);
+                newCube = new THREE.Mesh(cubeGeo, newMat);
                 newCube.matDefinido = "Ore";
             }else{                 // 10% probabilidade de ser indestrutivel
                 newMat = new THREE.MeshPhongMaterial({ color: 0x000000});
-                newCube = new THREE.Mesh(geometria, newMat);
+                newCube = new THREE.Mesh(cubeGeo, newMat);
                 newCube.matDefinido = "Indestrutivel";
             }
             newCube.receiveShadow = true;
@@ -360,7 +358,7 @@ function buildRobot() {
 
     robotBody.scale.set(0.8,0.8,0.8);
     robotBody.position.set(initialPos.x, 0, 0);
-    cena.add(robotBody);
+    scene.add(robotBody);
 }
 
 function moveLeft(){    // verificar se tem algum cubo à esquerda
@@ -368,7 +366,7 @@ function moveLeft(){    // verificar se tem algum cubo à esquerda
     var c = cubes.getObjectByName(objName);
     if (c == null || c.visible == false) { // se não existir cubo ou estiver escondido, mover
         playerPosition.x--;
-        camaraCoord.x--;
+        cameraCoord.x--;
     }
 }
 
@@ -377,7 +375,7 @@ function moveRight(){
     var c = cubes.getObjectByName(objName);
     if (c == null || c.visible == false) {
         playerPosition.x++;
-        camaraCoord.x++;
+        cameraCoord.x++;
     }
 }
 
@@ -386,7 +384,7 @@ function moveDown(){
     var c = cubes.getObjectByName(objName);
     if (c == null || c.visible == false) { 
         playerPosition.y--;
-        camaraCoord.y--;
+        cameraCoord.y--;
     }
 }
 
